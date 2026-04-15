@@ -32,8 +32,8 @@ def get_binance_ohlcv(symbol, interval, limit=100):
         "CloseTime","QuoteAssetVolume","NumberOfTrades",
         "TakerBuyBaseAssetVolume","TakerBuyQuoteAssetVolume","Ignore"
     ])
-    df = df[["Open","High","Low","Close","Volume"]].astype(float)
-    return df
+    df = df[["Open","High","Low","Close","Volume"]].apply(pd.to_numeric, errors="coerce")
+    return df.dropna()
 
 # Yahoo Finance fallback (fast: 1 day only)
 def get_yahoo_ohlcv(symbol="BTC-USD", interval="1h", limit=100):
@@ -41,8 +41,8 @@ def get_yahoo_ohlcv(symbol="BTC-USD", interval="1h", limit=100):
         df = yf.download(symbol, interval=interval, period="1d", progress=False)
         if df.empty:
             return pd.DataFrame()
-        df = df[["Open","High","Low","Close","Volume"]]
-        return df.tail(limit)
+        df = df[["Open","High","Low","Close","Volume"]].apply(pd.to_numeric, errors="coerce")
+        return df.tail(limit).dropna()
     except Exception:
         return pd.DataFrame()
 
@@ -93,18 +93,16 @@ if st.button("Fetch Data"):
     st.subheader("📡 Model Output")
 
     if not df.empty:
-        latest = df.iloc[-1]  # ✅ use raw OHLCV data
+        latest = df.iloc[-1]
 
-        # Safeguard: ensure OHLC columns exist
-        required_cols = ['Open','Close','High','Low']
-        if not all(col in latest.index for col in required_cols):
-            st.error("Missing OHLC columns in data. Try fetching again.")
+        try:
+            open_price = float(latest['Open'])
+            close_price = float(latest['Close'])
+            high_price = float(latest['High'])
+            low_price = float(latest['Low'])
+        except Exception as e:
+            st.error(f"Data format issue: {e}")
             st.stop()
-
-        open_price = float(latest['Open'])
-        close_price = float(latest['Close'])
-        high_price = float(latest['High'])
-        low_price = float(latest['Low'])
 
         price_change = close_price - open_price
         volatility = high_price - low_price
@@ -151,4 +149,3 @@ st.markdown("""
 # -------------------------------
 st.sidebar.markdown("### Keep Alive")
 st.sidebar.checkbox("Prevent sleep", value=True, help="Keeps the app session active")
-
