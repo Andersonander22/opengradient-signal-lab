@@ -93,16 +93,13 @@ if st.button("Fetch Data"):
     st.subheader("📡 Model Output")
 
     if not df.empty:
-        latest = df.iloc[-1]
+        # ✅ Use tail(1).iloc[0] to guarantee a single row
+        latest = df.tail(1).iloc[0]
 
-        try:
-            open_price = float(latest['Open'])
-            close_price = float(latest['Close'])
-            high_price = float(latest['High'])
-            low_price = float(latest['Low'])
-        except Exception as e:
-            st.error(f"Data format issue: {e}")
-            st.stop()
+        open_price = float(latest['Open'])
+        close_price = float(latest['Close'])
+        high_price = float(latest['High'])
+        low_price = float(latest['Low'])
 
         price_change = close_price - open_price
         volatility = high_price - low_price
