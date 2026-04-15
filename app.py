@@ -92,8 +92,8 @@ if st.button("Fetch Data"):
     # -------------------------------
     st.subheader("📡 Model Output")
 
-    if not engineered_df.empty:
-        latest = engineered_df.iloc[-1]
+    if not df.empty:
+        latest = df.iloc[-1]  # ✅ use raw OHLCV data
 
         # Safeguard: ensure OHLC columns exist
         required_cols = ['Open','Close','High','Low']
@@ -151,3 +151,4 @@ st.markdown("""
 # -------------------------------
 st.sidebar.markdown("### Keep Alive")
 st.sidebar.checkbox("Prevent sleep", value=True, help="Keeps the app session active")
+
