@@ -95,7 +95,12 @@ if st.button("Fetch Data"):
     if not engineered_df.empty:
         latest = engineered_df.iloc[-1]
 
-        # Ensure scalar values
+        # Safeguard: ensure OHLC columns exist
+        required_cols = ['Open','Close','High','Low']
+        if not all(col in latest.index for col in required_cols):
+            st.error("Missing OHLC columns in data. Try fetching again.")
+            st.stop()
+
         open_price = float(latest['Open'])
         close_price = float(latest['Close'])
         high_price = float(latest['High'])
