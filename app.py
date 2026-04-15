@@ -96,10 +96,11 @@ if st.button("Fetch Data"):
         # ✅ Use tail(1).iloc[0] to guarantee a single row
         latest = df.tail(1).iloc[0]
 
-        open_price = float(latest['Open'])
-        close_price = float(latest['Close'])
-        high_price = float(latest['High'])
-        low_price = float(latest['Low'])
+        # Explicitly cast to float
+        open_price = float(latest["Open"])
+        close_price = float(latest["Close"])
+        high_price = float(latest["High"])
+        low_price = float(latest["Low"])
 
         price_change = close_price - open_price
         volatility = high_price - low_price
