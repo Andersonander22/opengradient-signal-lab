@@ -93,14 +93,13 @@ if st.button("Fetch Data"):
     st.subheader("📡 Model Output")
 
     if not df.empty:
-        # ✅ Use tail(1).iloc[0] to guarantee a single row
-        latest = df.tail(1).iloc[0]
+        latest = df.tail(1)  # one-row dataframe
 
-        # Explicitly cast to float
-        open_price = float(latest["Open"])
-        close_price = float(latest["Close"])
-        high_price = float(latest["High"])
-        low_price = float(latest["Low"])
+        # ✅ Force scalar extraction with .values[0]
+        open_price = float(latest["Open"].values[0])
+        close_price = float(latest["Close"].values[0])
+        high_price = float(latest["High"].values[0])
+        low_price = float(latest["Low"].values[0])
 
         price_change = close_price - open_price
         volatility = high_price - low_price
