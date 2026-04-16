@@ -2,17 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import numpy as np
-import os
-from dotenv import load_dotenv
-import opengradient as og
 from features import engineer_features, select_features
-
-# -------------------------------
-# LOAD ENV + INIT OPENGRADIENT
-# -------------------------------
-load_dotenv()
-
-client = og.init(private_key=os.getenv("PRIVATE_KEY"))
 
 # -------------------------------
 # PAGE SETUP
@@ -20,7 +10,7 @@ client = og.init(private_key=os.getenv("PRIVATE_KEY"))
 st.set_page_config(page_title="OpenGradient Signal Lab", layout="wide")
 
 st.title("📊 OpenGradient Signal Lab")
-st.write("AI-powered short-term spot forecasting (Binance + OpenGradient)")
+st.write("Short-term spot forecasting model (Binance-powered)")
 
 # -------------------------------
 # INPUTS
@@ -43,7 +33,7 @@ interval = interval_map[interval_label]
 limit = st.slider("Number of candles", 10, 500, 100)
 
 # -------------------------------
-# BINANCE API (WORKING ENDPOINT)
+# BINANCE REST API (CLEAN VERSION)
 # -------------------------------
 def get_binance_ohlcv(symbol, interval, limit=100):
     try:
@@ -129,9 +119,9 @@ if st.button("Fetch Data"):
         selected_df = engineered_df
 
     # -------------------------------
-    # AI MODEL OUTPUT (OPENGRADIENT)
+    # MODEL OUTPUT
     # -------------------------------
-    st.subheader("📡 AI Signal (OpenGradient Model)")
+    st.subheader("📡 Model Output")
 
     try:
         latest = df.tail(1)
@@ -140,51 +130,44 @@ if st.button("Fetch Data"):
         close_price = float(latest["Close"].iloc[0])
         high_price = float(latest["High"].iloc[0])
         low_price = float(latest["Low"].iloc[0])
-        volume = float(latest["Volume"].iloc[0])
 
-        prompt = f"""
-        You are a crypto trading assistant.
+        price_change = close_price - open_price
+        volatility = high_price - low_price
 
-        Based on this market data:
-        Open: {open_price}
-        Close: {close_price}
-        High: {high_price}
-        Low: {low_price}
-        Volume: {volume}
+        if price_change > 0 and volatility > 0:
+            signal = "LONG 📈"
+            confidence = min((price_change / open_price) * 100 + (volatility / open_price) * 50, 100)
+        else:
+            signal = "SHORT 📉"
+            confidence = min(abs(price_change / open_price) * 100 + (volatility / open_price) * 50, 100)
 
-        Predict the next move: LONG or SHORT.
-        Also include a confidence percentage.
-        Keep it short.
-        """
+        if "LONG" in signal:
+            st.success(f"Signal: {signal}")
+        else:
+            st.error(f"Signal: {signal}")
 
-        response = client.llm.chat(
-            model="opengradient/llama",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        st.write(f"Confidence: {confidence:.2f}%")
+        st.progress(int(confidence))
 
-        result = str(response)
+        st.subheader("⚙️ Execution Logic")
 
-        st.success("AI Signal Generated ✅")
-        st.write(result)
+        if "LONG" in signal:
+            st.write("Strategy Suggestion: Consider entering a LONG position.")
+        else:
+            st.write("Strategy Suggestion: Consider entering a SHORT position.")
 
     except Exception:
-        st.warning("⚠️ AI model unavailable, using fallback logic.")
+        st.info("Signal generation skipped due to data issues.")
 
-        # fallback logic
-        if close_price > open_price:
-            st.success("Fallback Signal: LONG 📈")
-        else:
-            st.error("Fallback Signal: SHORT 📉")
+# -------------------------------
+# INFO
+# -------------------------------
+st.markdown("---")
+st.subheader("ℹ️ About")
 
-    # -------------------------------
-    # INFO
-    # -------------------------------
-    st.markdown("---")
-    st.subheader("ℹ️ About")
-
-    st.markdown("""
-    - Uses Binance public data API
-    - Applies feature engineering + selection
-    - Uses OpenGradient LLM for signal generation
-    - Fallback logic ensures reliability
-    """)
+st.markdown("""
+- Uses Binance public data API (stable endpoint)
+- Applies feature engineering + selection
+- Generates directional trading signal
+- Built for OpenGradient experimentation
+""")
