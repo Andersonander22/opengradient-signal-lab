@@ -1,14 +1,8 @@
 import streamlit as st
 import pandas as pd
-import time
-from binance.client import Client
-from binance.enums import *
+import requests
+import numpy as np
 from features import engineer_features, select_features
-
-# -------------------------------
-# INIT BINANCE CLIENT
-# -------------------------------
-client = Client()
 
 # -------------------------------
 # PAGE SETUP
@@ -26,10 +20,10 @@ st.subheader("Fetch Market Data")
 popular_pairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "SUIUSDT"]
 
 interval_map = {
-    "30m": Client.KLINE_INTERVAL_30MINUTE,
-    "1h": Client.KLINE_INTERVAL_1HOUR,
-    "6h": Client.KLINE_INTERVAL_6HOUR,
-    "1d": Client.KLINE_INTERVAL_1DAY,
+    "30m": "30m",
+    "1h": "1h",
+    "6h": "6h",
+    "1d": "1d",
 }
 
 symbol = st.selectbox("Trading Pair", popular_pairs)
@@ -39,19 +33,25 @@ interval = interval_map[interval_label]
 limit = st.slider("Number of candles", 10, 500, 100)
 
 # -------------------------------
-# FETCH BINANCE DATA
+# BINANCE REST API
 # -------------------------------
 def get_binance_ohlcv(symbol, interval, limit=100):
     try:
-        time.sleep(0.3)  # avoid rate limit
+        url = "https://api.binance.com/api/v3/klines"
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "limit": limit
+        }
 
-        klines = client.get_klines(
-            symbol=symbol,
-            interval=interval,
-            limit=limit
-        )
+        response = requests.get(url, params=params, timeout=10)
 
-        df = pd.DataFrame(klines, columns=[
+        if response.status_code != 200:
+            return pd.DataFrame()
+
+        data = response.json()
+
+        df = pd.DataFrame(data, columns=[
             "OpenTime","Open","High","Low","Close","Volume",
             "CloseTime","QuoteAssetVolume","NumberOfTrades",
             "TakerBuyBaseAssetVolume","TakerBuyQuoteAssetVolume","Ignore"
@@ -62,8 +62,7 @@ def get_binance_ohlcv(symbol, interval, limit=100):
 
         return df.dropna()
 
-    except Exception as e:
-        st.error(f"Binance API error: {e}")
+    except Exception:
         return pd.DataFrame()
 
 # -------------------------------
@@ -75,7 +74,7 @@ if st.button("Fetch Data"):
         df = get_binance_ohlcv(symbol, interval, limit)
 
     if df.empty:
-        st.error("Failed to fetch data from Binance. Try another pair or use VPN.")
+        st.error("Failed to fetch data from Binance. Network may be restricted.")
         st.stop()
 
     st.success("Data fetched from Binance ✅")
@@ -91,7 +90,7 @@ if st.button("Fetch Data"):
 
     engineered_df = engineer_features(df)
 
-    engineered_df = engineered_df.replace([float("inf"), float("-inf")], None)
+    engineered_df = engineered_df.replace([np.inf, -np.inf], np.nan)
     engineered_df = engineered_df.dropna()
 
     if engineered_df.empty:
@@ -106,7 +105,7 @@ if st.button("Fetch Data"):
     st.subheader("🎯 Feature Selection")
 
     try:
-        if len(engineered_df) < 10:
+        if len(engineered_df) < 20:
             st.info("Not enough data for feature selection.")
             selected_df = engineered_df
         else:
@@ -149,7 +148,6 @@ if st.button("Fetch Data"):
         st.write(f"Confidence: {confidence:.2f}%")
         st.progress(int(confidence))
 
-        # Execution logic
         st.subheader("⚙️ Execution Logic")
 
         if "LONG" in signal:
@@ -167,7 +165,7 @@ st.markdown("---")
 st.subheader("ℹ️ About")
 
 st.markdown("""
-- Uses **Binance OHLCV data only**
+- Uses Binance REST API (no SDK, more reliable)
 - Applies feature engineering + Lasso selection
 - Generates directional trading signal
 - Built for OpenGradient experimentation
