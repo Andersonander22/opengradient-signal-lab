@@ -3,3 +3,5 @@ pandas
 numpy
 requests
 scikit-learn
+opengradient
+python-dotenv
