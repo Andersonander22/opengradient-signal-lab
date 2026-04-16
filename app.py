@@ -33,50 +33,38 @@ interval = interval_map[interval_label]
 limit = st.slider("Number of candles", 10, 500, 100)
 
 # -------------------------------
-# BINANCE REST API (FIXED)
+# BINANCE REST API (CLEAN VERSION)
 # -------------------------------
 def get_binance_ohlcv(symbol, interval, limit=100):
-    urls = [
-        "https://api.binance.com/api/v3/klines",
-        "https://api.binance.me/api/v3/klines",
-        "https://data-api.binance.vision/api/v3/klines"
-    ]
+    try:
+        url = "https://data-api.binance.vision/api/v3/klines"
 
-    for url in urls:
-        try:
-            params = {
-                "symbol": symbol,
-                "interval": interval,
-                "limit": limit
-            }
+        params = {
+            "symbol": symbol,
+            "interval": interval,
+            "limit": limit
+        }
 
-            response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=10)
 
-            # Debug info
-            st.write(f"Trying endpoint: {url}")
-            st.write(f"Status Code: {response.status_code}")
+        if response.status_code != 200:
+            return pd.DataFrame()
 
-            if response.status_code == 200:
-                data = response.json()
+        data = response.json()
 
-                df = pd.DataFrame(data, columns=[
-                    "OpenTime","Open","High","Low","Close","Volume",
-                    "CloseTime","QuoteAssetVolume","NumberOfTrades",
-                    "TakerBuyBaseAssetVolume","TakerBuyQuoteAssetVolume","Ignore"
-                ])
+        df = pd.DataFrame(data, columns=[
+            "OpenTime","Open","High","Low","Close","Volume",
+            "CloseTime","QuoteAssetVolume","NumberOfTrades",
+            "TakerBuyBaseAssetVolume","TakerBuyQuoteAssetVolume","Ignore"
+        ])
 
-                df = df[["Open","High","Low","Close","Volume"]]
-                df = df.apply(pd.to_numeric, errors="coerce")
+        df = df[["Open","High","Low","Close","Volume"]]
+        df = df.apply(pd.to_numeric, errors="coerce")
 
-                return df.dropna()
+        return df.dropna()
 
-            else:
-                st.write(response.text)
-
-        except Exception as e:
-            st.write(f"Error with {url}: {e}")
-
-    return pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
 
 # -------------------------------
 # FETCH BUTTON
@@ -87,7 +75,7 @@ if st.button("Fetch Data"):
         df = get_binance_ohlcv(symbol, interval, limit)
 
     if df.empty:
-        st.error("❌ Failed to fetch data from Binance. Try another network or endpoint.")
+        st.warning("⚠️ Unable to fetch market data right now. Please try again.")
         st.stop()
 
     st.success("Data fetched from Binance ✅")
@@ -178,7 +166,7 @@ st.markdown("---")
 st.subheader("ℹ️ About")
 
 st.markdown("""
-- Uses Binance REST API with fallback endpoints
+- Uses Binance public data API (stable endpoint)
 - Applies feature engineering + selection
 - Generates directional trading signal
 - Built for OpenGradient experimentation
