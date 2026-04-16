@@ -1,6 +1,4 @@
 streamlit
 pandas
-requests
-yfinance
+python-binance
 scikit-learn
-python-dotenv
